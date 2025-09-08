@@ -18,3 +18,33 @@
   - TimeoutError 재현 (~20ms)
   - ValidationError (필드 누락)
 - README에 Day 1 요약 추가
+
+---
+
+### Day 2 — DTO ↔ ViewModel 매핑 & 유틸 타입
+
+**요약**: 서버 응답과 화면 표시를 분리하고, 매핑 레이어에서 포맷팅/라벨/파생 필드를 표준화.
+
+- 타입
+  - `UserDTO` / `UserVM` 정의
+- 매핑
+  - `createMapper<Src, Dest>()` 제네릭 매퍼 추가
+  - `userMap`(키 매핑) + `derive`(파생 필드: `joinedAt`, `planLabel`, `badge`, `city`)
+  - invalid date 가드(`parseDate`: 실패 시 epoch)
+- 화면 적용
+  - `UserDetail` 컴포넌트 VM 기반 렌더
+  - `UserList` 추가: DTO[] → VM[] 변환 후 렌더
+  - 컴포넌트 내 포맷팅/라벨 계산 로직 제거
+- 테스트
+  - `mapping.user.test.ts` **2 케이스 PASS** (기본/옵셔널)
+  - `mapping.user.extra.test.ts` **2 케이스 추가** (라벨/배지, invalid date)
+    - ※ alias 설정 필요 시 상대경로로 임시 통과
+- 개발 환경
+  - Vite dev server 스크립트 및 `index.html`/`main.tsx`/`App.tsx` 구성
+  - `@` 경로 alias(`tsconfig.paths`) + `vite-tsconfig-paths` 적용
+- 지표(예시)
+  - 매핑 적용 화면: **1 → 2**
+  - 화면 내 포맷팅 로직 제거: **-24 LOC**
+  - 단위 테스트: **+2 통과** (+2 작성)
+
+---
