@@ -10,8 +10,17 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "prepare": "husky"
+    "prepare": "husky",
+    "build:sdk": "npm -w packages/api-safety-sdk run build",
+    "test:sdk": "npm -w packages/api-safety-sdk run test",
+    "build:all": "npm run build:sdk && npm run build",
+    "dev:demo": "npm -w apps/demo-dashboard run dev"
   },
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "keywords": [],
   "author": "",
   "license": "ISC",

@@ -70,3 +70,20 @@
   - 런타임 파싱 오류: **3 → 0** (샘플 API 기준)
   - 검증 실패 메시지 표준화 적용 범위: **100%**
   - 테스트: **+2 케이스 추가**
+
+---
+
+### Infra — 모노레포 전환 & SDK MVP 빌드 (2025-09-09)
+
+- 루트 `package.json`에 **workspaces** 추가: `["packages/*", "apps/*"]`
+- `packages/api-safety-sdk` 패키지 스캐폴드
+  - `package.json`(exports, build 스크립트), `tsconfig.build.json`, `src/index.ts`(re-export)
+  - **빌드 통과** → `dist/` 생성 (SDK **0.1.0 MVP**)
+  - `zod@4` 정합성 확보(루트와 동일 버전)
+- 스크립트
+  - `build:sdk`: `npm -w packages/api-safety-sdk run build`
+- 스모크
+  - 레퍼런스 앱에서 `fetchJson` 호출 성공 (성공/Decode/Timeout/Http 시나리오 확인)
+- 지표(예시)
+  - SDK 빌드 실패: **1 → 0**
+  - 배포물(dist) 크기(esm+cjs+d.ts): 기록 시작
