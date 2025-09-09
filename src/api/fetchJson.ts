@@ -1,18 +1,19 @@
 import { ZodSchema } from 'zod';
-import { err, ok, Result } from './result';
-import { AppError } from './errors';
+import { err, ok, type Result } from './result';
+import type { AppError } from './errors';
 
 export type ParseMode = 'json' | 'text' | 'blob';
 
 export type FetchJsonOptions<T> = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   headers?: Record<string, string>;
-  body?: unknown; // 자동으로 JSON.stringify 해줄지 여부는 jsonBody 플래그로 제어
+  body?: unknown; // 자동 JSON.stringify 여부는 jsonBody로 제어
   jsonBody?: boolean; // true면 body를 JSON.stringify + content-type 설정
   timeoutMs?: number; // 기본 10초
-  signal?: AbortSignal; // 외부 AbortController와 연동 가능
+  signal?: AbortSignal; // 외부 AbortController와 연동
   parse?: ParseMode; // 기본 'json'
   schema?: ZodSchema<T>; // 제공 시 런타임 검증
+  credentials?: RequestCredentials; // 기본 'include' 유지 가능
 };
 
 const DEFAULT_TIMEOUT = 10_000;
@@ -30,6 +31,7 @@ export async function fetchJson<T>(
     signal,
     parse = 'json',
     schema,
+    credentials = 'include',
   } = opts;
 
   const controller = new AbortController();
@@ -37,9 +39,13 @@ export async function fetchJson<T>(
   const composedSignal = mergeSignals(signal, controller.signal);
 
   try {
-    const finalHeaders: Record<string, string> = { ...headers };
-    let finalBody: BodyInit | undefined;
+    // 기본 Accept 헤더 추가(서버가 협상 가능하도록)
+    const finalHeaders: Record<string, string> = {
+      Accept: 'application/json, text/plain;q=0.9, */*;q=0.8',
+      ...headers,
+    };
 
+    let finalBody: BodyInit | undefined;
     if (body !== undefined) {
       if (jsonBody) {
         finalHeaders['Content-Type'] ??= 'application/json';
@@ -54,9 +60,10 @@ export async function fetchJson<T>(
       headers: finalHeaders,
       body: finalBody,
       signal: composedSignal,
-      credentials: 'include',
+      credentials,
     });
 
+    // HTTP 에러면 가능한 한 바디를 파싱해서 담아준다
     if (!res.ok) {
       const errorBody = await safeReadBody(res);
       return err<AppError>({
@@ -67,8 +74,10 @@ export async function fetchJson<T>(
       });
     }
 
+    // 성공 응답 파싱
     const parsed = await parseBody(res, parse);
 
+    // zod 스키마 검증(있을 때만)
     if (schema) {
       const check = schema.safeParse(parsed);
       if (!check.success) {
@@ -78,7 +87,7 @@ export async function fetchJson<T>(
         }));
         return err<AppError>({
           kind: 'ValidationError',
-          message: 'Response validation failed',
+          message: '응답 스키마가 기대와 달라.',
           issues,
         });
       }
@@ -87,34 +96,37 @@ export async function fetchJson<T>(
 
     return ok<T>(parsed as T);
   } catch (e: any) {
-    // ✅ ParseError 구분
+    // JSON 파싱 실패를 명확히 구분
     if (e?.name === 'ParseError') {
       return err<AppError>({
         kind: 'ParseError',
-        message: 'Failed to parse JSON response',
+        message: 'JSON 파싱에 실패했어.',
         raw: e.raw ?? '',
         cause: e.cause,
       });
     }
 
     if (e?.name === 'AbortError') {
+      // timeout 사유로 abort된 케이스
       if (e?.message === 'timeout' || e === 'timeout') {
         return err<AppError>({
           kind: 'TimeoutError',
-          message: 'Request timed out',
+          message: '요청이 시간 제한을 초과했어.',
           timeoutMs,
         });
       }
+      // 이 외 abort는 네트워크로 분류
       return err<AppError>({
         kind: 'NetworkError',
-        message: 'Request aborted',
+        message: '요청이 중단되었어.',
         cause: e,
       });
     }
 
+    // 그 외 fetch 단계 에러(네트워크 등)
     return err<AppError>({
       kind: 'NetworkError',
-      message: 'Network request failed',
+      message: '네트워크 요청에 실패했어.',
       cause: e,
     });
   } finally {
@@ -131,7 +143,7 @@ async function safeReadBody(res: Response): Promise<unknown> {
     }
     return await res.text();
   } catch {
-    // 파싱 실패 시 원문 그대로 텍스트로 시도
+    // 파싱 실패 시 원문 텍스트로 재시도
     try {
       return await res.text();
     } catch {
@@ -149,12 +161,12 @@ async function parseBody(res: Response, mode: ParseMode): Promise<unknown> {
       return await res.blob();
     case 'json':
     default: {
-      // ✅ clone으로 json 파싱 시도(실패해도 원본 바디는 남겨둠)
+      // clone으로 json 파싱 시도(실패해도 원본 보존)
       const clone = res.clone();
       try {
         return await clone.json();
       } catch (e: any) {
-        // ✅ 원본에서 텍스트를 읽어 raw 확보
+        // 원본에서 텍스트를 읽어 raw 확보 → ParseError로 승격
         const raw = await res.text().catch(() => '');
         throw { name: 'ParseError', raw, cause: e };
       }

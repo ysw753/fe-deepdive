@@ -13,7 +13,9 @@ export async function getUser(userId: number): Promise<Result<User, AppError>> {
 }
 
 // POST 예시
-export async function createUser(input: Pick<User, 'name' | 'email'>): Promise<Result<User, AppError>> {
+export async function createUser(
+  input: Pick<User, 'name' | 'email'>
+): Promise<Result<User, AppError>> {
   return fetchJson<User>('/api/users', {
     method: 'POST',
     body: input,

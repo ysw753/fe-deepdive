@@ -37,3 +37,61 @@ export type ValidationError = {
 };
 
 export type AppError = NetworkError | TimeoutError | HttpError | ParseError | ValidationError;
+
+// ---------- factories (일관된 메시지/필드 세팅) ----------
+
+export const makeNetworkError = (
+  cause?: unknown,
+  message = '네트워크 연결 실패'
+): NetworkError => ({
+  kind: 'NetworkError',
+  message,
+  cause,
+});
+
+export const makeTimeoutError = (timeoutMs: number, message = '요청 시간 초과'): TimeoutError => ({
+  kind: 'TimeoutError',
+  message,
+  timeoutMs,
+});
+
+export const makeHttpError = (
+  status: number,
+  statusText: string,
+  body?: unknown,
+  message = '서버 오류 상태'
+): HttpError => ({
+  kind: 'HttpError',
+  status,
+  statusText,
+  body,
+});
+
+export const makeParseError = (
+  raw: string,
+  cause?: unknown,
+  message = '응답 파싱 실패'
+): ParseError => ({
+  kind: 'ParseError',
+  message,
+  raw,
+  cause,
+});
+
+export const makeValidationError = (
+  issues: ValidationIssue[],
+  message = '응답 스키마 불일치'
+): ValidationError => ({
+  kind: 'ValidationError',
+  message,
+  issues,
+});
+
+// ---------- type guards (선택) ----------
+
+export const isNetworkError = (e: AppError): e is NetworkError => e.kind === 'NetworkError';
+export const isTimeoutError = (e: AppError): e is TimeoutError => e.kind === 'TimeoutError';
+export const isHttpError = (e: AppError): e is HttpError => e.kind === 'HttpError';
+export const isParseError = (e: AppError): e is ParseError => e.kind === 'ParseError';
+export const isValidationError = (e: AppError): e is ValidationError =>
+  e.kind === 'ValidationError';

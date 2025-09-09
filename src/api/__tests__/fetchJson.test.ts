@@ -1,124 +1,141 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchJson } from '../fetchJson';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
-import { AppError } from '../errors';
+import { fetchJson } from '../fetchJson';
 
-const UserSchema = z.object({ id: z.number(), name: z.string() });
-type User = z.infer<typeof UserSchema>;
+// 헬퍼: Response 생성
+const jsonRes = (body: unknown, init?: ResponseInit) =>
+  new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+    ...(init ?? {}),
+  });
 
-beforeEach(() => {
-  vi.resetAllMocks();
-  // @ts-expect-error — 테스트 환경에 fetch 주입
-  global.fetch = vi.fn();
-});
+const textRes = (text: string, init?: ResponseInit) =>
+  new Response(text, {
+    status: 200,
+    headers: { 'content-type': 'text/plain' },
+    ...(init ?? {}),
+  });
+
+const httpErrRes = (status: number, body: unknown, ct = 'application/json') =>
+  new Response(ct === 'application/json' ? JSON.stringify(body) : String(body), {
+    status,
+    headers: { 'content-type': ct },
+  });
 
 describe('fetchJson', () => {
-  it('성공: 200 + JSON + 검증 통과', async () => {
-    // @ts-expect-error
-    global.fetch.mockResolvedValueOnce(
-      new Response(JSON.stringify({ id: 1, name: 'Alice' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
+  const originalFetch = globalThis.fetch;
 
-    const res = await fetchJson<User>('/api/users/1', { schema: UserSchema });
-    expect(res.ok).toBe(true);
-    if (res.ok) {
-      expect(res.data.id).toBe(1);
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.stubGlobal('fetch', originalFetch);
+  });
+
+  it('✅ 스키마 없이 성공(JSON) → ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonRes({ id: 1, name: 'Lee' })));
+
+    const r = await fetchJson<{ id: number; name: string }>('/users/1');
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.data.id).toBe(1);
+      expect(r.data.name).toBe('Lee');
     }
   });
 
-  it('HTTP 에러: 500', async () => {
-    // @ts-expect-error
-    global.fetch.mockResolvedValueOnce(
-      new Response(JSON.stringify({ error: 'server down' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-        statusText: 'Internal Server Error',
-      })
-    );
+  it('✅ parse: "text" 성공 → ok(string)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(textRes('hello')));
 
-    const res = await fetchJson<User>('/api/users/1', { schema: UserSchema });
-    expect(res.ok).toBe(false);
-    if (!res.ok) {
-      const e = res.error as AppError;
-      expect(e.kind).toBe('HttpError');
-      expect(e.status).toBe(500);
+    const r = await fetchJson<string>('/ping', { parse: 'text' });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.data).toBe('hello');
+  });
+
+  it('✅ 스키마 검증 성공 → ok(추론 타입)', async () => {
+    const User = z.object({ id: z.number().int(), name: z.string().min(1) });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonRes({ id: 7, name: 'Kim' })));
+
+    const r = await fetchJson('/users/7', { schema: User });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.data.id).toBe(7);
+  });
+
+  it('❌ 스키마 검증 실패 → ValidationError', async () => {
+    const User = z.object({ id: z.number().int(), name: z.string().min(1) });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonRes({ id: 1, name: '' })));
+
+    const r = await fetchJson('/users/1', { schema: User });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error.kind).toBe('ValidationError');
+      // issues 평탄화 확인
+      // @ts-expect-error narrow
+      expect(r.error.issues?.length).toBeGreaterThan(0);
+      // @ts-expect-error narrow
+      expect(r.error.message).toBe('응답 스키마가 기대와 달라.');
     }
   });
 
-  it('파싱 실패: JSON 아님 → ParseError', async () => {
-    // @ts-expect-error
-    global.fetch.mockResolvedValueOnce(
-      new Response('<html></html>', {
-        status: 200,
-        headers: { 'Content-Type': 'text/html' },
-      })
-    );
+  it('❌ HTTP 에러 → HttpError(status, body 포함)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(httpErrRes(404, { error: 'NotFound' })));
 
-    const res = await fetchJson<User>('/api/users/1', { schema: UserSchema });
-    expect(res.ok).toBe(false);
-    if (!res.ok) {
-      const e = res.error as AppError;
-      expect(e.kind).toBe('ParseError'); // ✅ 리팩토링 후엔 ParseError가 정확히 떨어짐
-      // raw 본문도 선택적으로 점검 가능:
-      // @ts-expect-error
-      expect((e as any).raw).toContain('<html>');
+    const r = await fetchJson('/users/999');
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error.kind).toBe('HttpError');
+      // @ts-expect-error narrow
+      expect(r.error.status).toBe(404);
+      // @ts-expect-error narrow
+      expect(r.error.body).toEqual({ error: 'NotFound' });
     }
   });
 
-  it('타임아웃: AbortSignal을 존중하는 mock으로 재현', async () => {
-    // abort를 들으면 AbortError로 reject하는 fetch mock
-    // @ts-expect-error
-    global.fetch.mockImplementationOnce((_url: string, init?: RequestInit) => {
+  it('❌ ParseError (content-type: application/json인데 JSON 깨짐)', async () => {
+    const bad = new Response('not-json', {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(bad));
+
+    const r = await fetchJson('/weird-json');
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error.kind).toBe('ParseError');
+      // @ts-expect-error narrow
+      expect(typeof r.error.raw).toBe('string');
+    }
+  });
+
+  it('⏳ Timeout → TimeoutError(timeoutMs 일치)', async () => {
+    vi.useFakeTimers();
+
+    // fetch가 signal abort될 때 AbortError로 reject되도록 모킹
+    const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
       return new Promise((_resolve, reject) => {
         const signal = init?.signal as AbortSignal | undefined;
-
-        const rejectAbort = () => {
-          const err: any = new Error('timeout');
-          err.name = 'AbortError';
-          err.message = 'timeout';
+        signal?.addEventListener('abort', () => {
+          const err = new Error('timeout');
+          (err as any).name = 'AbortError';
+          (err as any).message = 'timeout';
           reject(err);
-        };
-
-        // 이미 abort 상태면 즉시 실패
-        if (signal?.aborted) {
-          rejectAbort();
-          return;
-        }
-        // 이후 abort 이벤트를 구독
-        signal?.addEventListener('abort', rejectAbort);
-        // resolve는 호출하지 않음 → abort가 유일한 탈출구
+        });
+        // 절대 resolve/reject 안 하고 abort만 기다림
       });
     });
+    vi.stubGlobal('fetch', fetchMock);
 
-    const res = await fetchJson<User>('/api/users/1', {
-      schema: UserSchema,
-      timeoutMs: 20, // 짧게
-    });
-    expect(res.ok).toBe(false);
-    if (!res.ok) {
-      const e = res.error as AppError;
-      expect(['TimeoutError', 'NetworkError']).toContain(e.kind);
-    }
-  }, 500); // 이 테스트 자체 타임아웃도 짧게
+    const promise = fetchJson('/slow', { timeoutMs: 5 });
+    await vi.advanceTimersByTimeAsync(6);
+    const r = await promise;
 
-  it('검증 실패: 필드 누락 → ValidationError', async () => {
-    // @ts-expect-error
-    global.fetch.mockResolvedValueOnce(
-      new Response(JSON.stringify({ id: 1 }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
-    const res = await fetchJson<User>('/api/users/1', { schema: UserSchema });
-    expect(res.ok).toBe(false);
-    if (!res.ok) {
-      const e = res.error as AppError;
-      expect(e.kind).toBe('ValidationError');
-      // e.issues로 상세 경로/메시지 확인 가능
-      expect((e as any).issues?.length ?? 0).toBeGreaterThan(0);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error.kind).toBe('TimeoutError');
+      // @ts-expect-error narrow
+      expect(r.error.timeoutMs).toBe(5);
     }
+    vi.useRealTimers();
   });
 });

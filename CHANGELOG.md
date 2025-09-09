@@ -48,3 +48,25 @@
   - 단위 테스트: **+2 통과** (+2 작성)
 
 ---
+
+### Day 3 — zod 스키마 & 검증 파이프
+
+**요약**: 스키마를 중첩/교차 규칙까지 확장하고, `fetchJson`과 결합해 **런타임 안전망** 강화.
+
+- 추가
+  - `AddressSchema`, `UserSchema`(중첩, `coerce.date`, `superRefine` 규칙)
+  - `pageSchema(item)` 제네릭 → `UserPageSchema`
+  - `type User = z.infer<typeof UserSchema>` 타입 동기화
+- 변경/개선
+  - `fetchJson(url, { schema })` 경로에서 검증 실패 시 `ValidationError(issues[])` 표준화
+  - (보강) 기본 `Accept` 헤더 추가, JSON 파싱 실패 시 `ParseError`에 `raw` 보존
+- 테스트
+  - `api/__tests__/fetchJson.test.ts` 보강: 총 **7 케이스 PASS**
+    - 성공(JSON), `parse: "text"`, 스키마 검증 성공/실패
+    - HTTP 에러 → `HttpError(status, body)`
+    - JSON 깨짐 → `ParseError(raw)`
+    - 타임아웃 → `TimeoutError(timeoutMs)`
+- 지표(예시)
+  - 런타임 파싱 오류: **3 → 0** (샘플 API 기준)
+  - 검증 실패 메시지 표준화 적용 범위: **100%**
+  - 테스트: **+2 케이스 추가**
