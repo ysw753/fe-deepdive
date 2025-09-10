@@ -14,7 +14,9 @@
     "build:sdk": "npm -w packages/api-safety-sdk run build",
     "test:sdk": "npm -w packages/api-safety-sdk run test",
     "build:all": "npm run build:sdk && npm run build",
-    "dev:demo": "npm -w apps/demo-dashboard run dev"
+    "dev:demo": "npm -w apps/demo-dashboard run dev",
+    "build:demo": "npm -w apps/demo-dashboard run build",
+    "test:demo": "npm -w apps/demo-dashboard run test"
   },
   "private": true,
   "workspaces": [

@@ -10,6 +10,16 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs",
       "types": "./dist/index.d.ts"
+    },
+    "./adapters/rhf": {
+      "import": "./dist/adapters/rhf.js",
+      "require": "./dist/adapters/rhf.cjs",
+      "types": "./dist/adapters/rhf.d.ts"
+    },
+    "./error-helpers": {
+      "import": "./dist/error-helpers.js",
+      "require": "./dist/error-helpers.cjs",
+      "types": "./dist/error-helpers.d.ts"
     }
   },
   "scripts": {
