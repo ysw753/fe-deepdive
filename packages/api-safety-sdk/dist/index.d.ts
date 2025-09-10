@@ -4,4 +4,4 @@ export * from './schemas';
 export * from './errors';
 export * from './zod-utils';
 export * from './error-helpers';
-export * as adapters from './adapters/rhf';
+export { applyFormError } from './adapters/rhf';

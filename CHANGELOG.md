@@ -87,3 +87,36 @@
 - 지표(예시)
   - SDK 빌드 실패: **1 → 0**
   - 배포물(dist) 크기(esm+cjs+d.ts): 기록 시작
+
+### Day 4 — 데모앱 스캐폴드 + 로그인 폼(a11y/RHF+zod) (2025-09-10)
+
+**요약**: Next.js 데모앱을 추가하고 `/login` 폼을 RHF+zod로 구현. SDK의 `applyFormError`를 연동해
+서버 에러를 폼 에러로 자동 매핑. Tailwind로 스타일 표준화 및 접근성(a11y) 보강.
+
+- 데모앱
+  - `apps/demo-dashboard` 추가(App Router)
+  - 페이지: `/login` (이메일/비밀번호)
+  - 실행 스크립트: `dev:demo`(기본), **Windows 이슈 시** `dev:demo:webpack`
+- 폼/a11y
+  - `loginSchema` (`zod`): `email().min(…)`, `password.min(8)`
+  - RHF 클라 검증 실패 시 **최초 에러 필드로 포커스**
+  - 전역 에러 배너: `role="alert"`, `aria-live="polite"`
+  - `FormField` 컴포넌트: `aria-describedby`로 에러/힌트 연결
+- SDK 연동
+  - `applyFormError`로 서버 에러 매핑
+    - `parseFieldErrors` 결과가 있으면 필드별 `setError`
+    - 없을 경우 **status → field** 매핑(예: `400/401 → password`)
+    - 그 외 전역 에러 메시지(`errorToMessage`)
+- 스타일/빌드
+  - Tailwind 설치 및 구성: `@tailwindcss/postcss` 기반(PostCSS 플러그인)
+  - 전역 CSS에 `@import 'tailwindcss'` + `@tailwind base/components/utilities`
+- 의존성/환경
+  - `react-hook-form ^7.55`, `@hookform/resolvers ^5.2.1`, `zod ^4.1.5`로 **Zod v4 호환** 정렬
+  - (개발기) Next 15 Turbopack panic 발생 시 webpack dev로 회피 스크립트 추가
+- 테스트
+  - `schemas.test.ts`: 이메일/비밀번호 유효성 (성공/실패) **PASS**
+  - `applyFormError.test.ts`: 필드 에러/상태 매핑/전역 에러 분기 **PASS**
+- 지표(예시)
+  - **Invalid 제출 시 네트워크 요청**: 0 (클라 검증 차단)
+  - **첫 에러 필드 포커스율**: 100%
+  - 단위 테스트: **+5 케이스**(데모앱 영역)

@@ -14,7 +14,7 @@ const defaults: Required<ErrorMessageMap> = {
   NetworkError: (e) => e.message ?? '네트워크 연결 실패',
   TimeoutError: (e) => e.message ?? `요청 시간 초과`,
   ParseError: (e) => e.message ?? '응답 파싱 실패',
-  ValidationError: (e) => e.message || e.issues?.[0]?.message || '응답 스키마 불일치',
+  ValidationError: (e) => e.issues?.[0]?.message ?? e.message ?? '응답 스키마 불일치',
   HttpError: (e) => {
     const msg = httpBodyMessage(e.body) ?? e.statusText;
     return msg ? `HTTP ${e.status}: ${msg}` : `HTTP ${e.status}`;
