@@ -24,7 +24,7 @@ export default function LoginForm() {
   } = useForm<LoginValues>({ resolver: zodResolver(loginSchema), mode: 'onSubmit' });
 
   const onInvalid = (fieldErrors: typeof errors) => {
-    // console.log('INVALID', fieldErrors); // ← 필요 시 디버그
+    console.log('INVALID', fieldErrors); // ← 필요 시 디버그
     const first = Object.keys(fieldErrors)[0] as keyof LoginValues | undefined;
     if (first) setFocus(first);
   };

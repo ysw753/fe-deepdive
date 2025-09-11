@@ -120,3 +120,37 @@
   - **Invalid 제출 시 네트워크 요청**: 0 (클라 검증 차단)
   - **첫 에러 필드 포커스율**: 100%
   - 단위 테스트: **+5 케이스**(데모앱 영역)
+
+### Day 5 — 회원가입 폼 완성(Zod 전면화) · 테스트 안정화 · 타입 정리 (2025-09-11)
+
+**요약**  
+`/signup`을 RHF 필드 검증 없이 **Zod 단일 소스**로 운영.  
+비동기 **아이디 중복검사(superRefine)**와 **파일 5MB 제한**을 스키마에 통합하고,  
+환경(브라우저/JSDOM/SSR) 불문 **동일 동작** 보장.  
+RHF 제네릭/Resolver 타입 불일치 해결, Vitest **hoisted mock**로 네트워크 의존 제거.
+
+---
+
+#### 변경/추가
+
+- **스키마(`signupSchema`)**
+  - 교차 규칙: `password === confirmPassword` (`refine`)
+  - 비동기 규칙: `username` **중복검사** (`superRefine`)
+    - 10초 **TTL 캐시**로 동일 값 재검증 시 서버 호출 감소
+  - 파일 입력: `File | FileList | file-like` 허용 → **transform**으로 `File | undefined` 정규화
+    - **5MB 제한**(refine), `typeof window` 분기 제거(환경 독립)
+- **RHF 연동/타입**
+  - 타입 분리: `type SignupInput = z.input<typeof signupSchema>`, `type SignupOutput = z.output<typeof signupSchema>`
+  - `useForm<SignupInput>({ resolver: zodResolver(signupSchema), mode: 'onChange', reValidateMode: 'onBlur' })`
+  - 제출: `parseAsync(raw)`로 **출력 타입 확정** 후 API 호출 → Resolver 제네릭 불일치(TS2322/2345) 제거
+- **SDK 연동**
+  - `applyFormError` 상태 매핑: 예) `409 → username` 포커스/필드 에러, 그 외 전역 배너(`role="alert"`)
+- **FormField/a11y**
+  - `forwardRef`로 RHF 핸들러/`ref` 원형 전달
+  - `aria-describedby`로 힌트·에러 텍스트 연결 유지
+- **테스트(Vitest)**
+  - `signupSchema`: **`safeParseAsync`** 채택 (superRefine async 대응)
+  - `usernameUniqueValidator` **hoisted mock** 적용 → 실제 네트워크 차단
+  - 5MB 초과 파일 케이스 정확히 실패하도록 스키마 수정(환경 독립 transform)
+
+---
