@@ -1,1 +1,53 @@
 @import 'tailwindcss';
+/* 키보드 탐색 시 포커스 링 보이기 */
+:where(
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  summary,
+  [role='button'],
+  [tabindex]:not([tabindex='-1'])
+):focus-visible {
+  outline: 3px solid #0a7cff; /* 필요하면 브랜드 컬러로 교체 */
+  outline-offset: 2px;
+}
+
+:where(
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  summary,
+  [role='button'],
+  [tabindex]:not([tabindex='-1'])
+):focus {
+  /* 일부 브라우저에서 focus만 남을 때 default 보장 */
+  outline: auto;
+  outline-offset: 2px;
+}
+
+/* 스킵 링크 스타일 */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  left: 8px;
+  top: 8px;
+  z-index: 1000;
+  padding: 8px 12px;
+  background: #ffffff;
+  color: #000;
+  border: 2px solid #0a7cff;
+  border-radius: 6px;
+}
+
+/* 링크에 focus-visible 시 시각적 단서 */
+a:focus-visible {
+  text-decoration: underline;
+}

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm, type Path } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginValues } from './schemas';
@@ -14,6 +14,7 @@ const STATUS_FIELD_MAP = {
 
 export default function LoginForm() {
   const [serverError, setServerError] = useState<string | null>(null);
+  const submitSeqRef = useRef(0);
 
   const {
     register,
@@ -24,38 +25,44 @@ export default function LoginForm() {
   } = useForm<LoginValues>({ resolver: zodResolver(loginSchema), mode: 'onSubmit' });
 
   const onInvalid = (fieldErrors: typeof errors) => {
-    console.log('INVALID', fieldErrors); // ← 필요 시 디버그
     const first = Object.keys(fieldErrors)[0] as keyof LoginValues | undefined;
     if (first) setFocus(first);
   };
 
   const onValid = async (values: LoginValues) => {
     setServerError(null);
-    // console.log('VALID', values); // ← 필요 시 디버그
-    const res = await loginRequest(values);
 
-    if (res.ok) {
-      alert(`로그인 성공! token=${res.data.token}`);
-      return;
+    const mySeq = ++submitSeqRef.current;
+
+    try {
+      const res = await loginRequest(values);
+
+      if (mySeq !== submitSeqRef.current) return;
+
+      if (res.ok) {
+        setServerError(null);
+        return;
+      }
+
+      applyFormError(res.error, {
+        setError,
+        setFocus,
+        setServerError,
+        statusFieldMap: STATUS_FIELD_MAP,
+      });
+    } catch {
+      if (mySeq !== submitSeqRef.current) return;
+      setServerError('서버 오류');
     }
-
-    applyFormError(res.error, {
-      setError,
-      setFocus,
-      statusFieldMap: STATUS_FIELD_MAP,
-      setServerError,
-    });
   };
 
   return (
     <form
       onSubmit={handleSubmit(onValid, onInvalid)}
       noValidate
+      aria-busy={isSubmitting}
       className="mx-auto max-w-md rounded-xl border border-neutral-200 p-6 dark:border-neutral-800"
-      aria-describedby={serverError ? 'form-error' : undefined}
     >
-      <h1 className="mb-4 text-xl font-semibold">로그인</h1>
-
       <FormField
         label="이메일"
         type="email"
@@ -84,6 +91,7 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={isSubmitting}
+        aria-disabled={isSubmitting}
         className="w-full rounded-md border border-neutral-900 bg-neutral-900 px-4 py-2 text-white transition disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-200 dark:bg-neutral-200 dark:text-neutral-900"
       >
         {isSubmitting ? '로그인 중...' : '로그인'}

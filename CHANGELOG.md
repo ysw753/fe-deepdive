@@ -154,3 +154,15 @@ RHF 제네릭/Resolver 타입 불일치 해결, Vitest **hoisted mock**로 네�
   - 5MB 초과 파일 케이스 정확히 실패하도록 스키마 수정(환경 독립 transform)
 
 ---
+
+### Day 6 — a11y 스모크 테스트 및 개선
+
+**요약**: 접근성(a11y) 기본 스모크 테스트를 수행하고, 폼/버튼/포커스 링 관련 개선 작업 반영.
+
+- 점검 항목
+  - 키보드 탭 순서 확인 (폼 → 버튼 → 알림 메시지 순서 정상)
+  - 포커스 링(Outline) 시인성 확보
+- 변경/개선
+  - `<FormField>`에 `aria-describedby`, `role="alert"` 추가
+  - 버튼에 `disabled` + `aria-disabled` 동시 적용
+  - 서버 오류 메시지 전역 `<p role="alert">` 렌더 보강
