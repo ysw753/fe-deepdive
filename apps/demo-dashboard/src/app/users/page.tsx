@@ -1,13 +1,13 @@
-import { UserList } from './UserList';
 import { getUsers } from '@/lib/api/users';
+import { UsersClient } from './UsersClient';
 
 export default async function UsersPage() {
-  const users = await getUsers();
+  const initialUsers = await getUsers();
 
   return (
     <main className="mx-auto max-w-2xl p-6">
       <h1 className="mb-4 text-2xl font-bold">Users</h1>
-      <UserList users={users} />
+      <UsersClient initialUsers={initialUsers} />
     </main>
   );
 }

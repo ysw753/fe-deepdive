@@ -167,6 +167,10 @@ RHF 제네릭/Resolver 타입 불일치 해결, Vitest **hoisted mock**로 네�
   - 버튼에 `disabled` + `aria-disabled` 동시 적용
   - 서버 오류 메시지 전역 `<p role="alert">` 렌더 보강
 
+## Week 2 — 렌더링 최적화 + 가상화 + Suspense
+
+### Day 1: 병목 식별(/users 페이지 Profiler)
+
 **요약**  
 `/users` 페이지를 만들고, 더미 데이터 기반 `UserList`/`UserCard` 렌더링을 로그 및 Profiler로 추적.  
 렌더링 병목 후보(리스트/카드 반복 렌더링) 식별하고, `memo`와 `heavyWork`로 성능 체감 실험 진행.
@@ -195,3 +199,32 @@ RHF 제네릭/Resolver 타입 불일치 해결, Vitest **hoisted mock**로 네�
 
 - **app/layout.tsx**
   - 헤더 내 `/users` 네비게이션 링크 추가
+
+### Day 2: 메모화 + 디바운스 검색 최적화
+
+**요약**  
+`/users` 페이지에 검색, 추가/삭제 기능을 붙이고, `useMemo`/`useCallback`/`memo` 최적화와  
+300ms 디바운스 검색 적용. 또한 Day6에서 만든 `FormField` 컴포넌트로 a11y 개선 반영.
+
+#### 추가/변경
+
+- **features/users/UsersClient.tsx**
+  - `useState`로 `query`, `name`, `email` 상태 관리
+  - `useEffect` + `setTimeout`으로 검색어 300ms 디바운스 처리
+  - `useMemo`로 `filteredUsers` 계산 → `users`/`debouncedQuery` 변경 시에만 필터링
+  - `useCallback`으로 `handleAdd`, `handleDelete` 메모화
+  - 검색 인풋 및 추가 폼에 `FormField` 적용 (라벨/힌트/에러/포커스링 지원)
+  - Tab 이동 시 버튼까지 포커스 가능하도록 구조 개선
+
+- **features/users/UserCard.tsx**
+  - `memo(UserCardBase)` 적용해 불필요한 리렌더링 최소화
+  - `onClick` + `onDelete` 분리, 이벤트 전파 중단(`stopPropagation`) 처리
+
+- **app/users/page.tsx**
+  - 서버에서 받은 `initialUsers`를 `UsersClient`로 전달
+
+**체감 효과**
+
+- 검색 시 입력할 때마다 500개 전부 필터링하지 않고, 디바운스로 부하 완화
+- 불필요한 렌더링 차단 → 500개 리스트에서 FPS 안정화
+- 접근성(a11y) 준수한 입력/버튼 제공 → 실무 환경과 유사하게 개선
