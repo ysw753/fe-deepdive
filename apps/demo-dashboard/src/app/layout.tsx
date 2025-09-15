@@ -32,6 +32,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   회원가입
                 </Link>
               </li>
+              <li>
+                <Link href="/users" className="hover:underline">
+                  사용자 목록
+                </Link>
+              </li>
             </ul>
           </nav>
         </header>

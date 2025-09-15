@@ -166,3 +166,32 @@ RHF 제네릭/Resolver 타입 불일치 해결, Vitest **hoisted mock**로 네�
   - `<FormField>`에 `aria-describedby`, `role="alert"` 추가
   - 버튼에 `disabled` + `aria-disabled` 동시 적용
   - 서버 오류 메시지 전역 `<p role="alert">` 렌더 보강
+
+**요약**  
+`/users` 페이지를 만들고, 더미 데이터 기반 `UserList`/`UserCard` 렌더링을 로그 및 Profiler로 추적.  
+렌더링 병목 후보(리스트/카드 반복 렌더링) 식별하고, `memo`와 `heavyWork`로 성능 체감 실험 진행.
+
+#### 추가/변경
+
+- **lib/api/users.ts**
+  - 실제 API 대신 **더미 데이터(fetch delay 포함)** 반환하도록 구현
+  - `getUsers()` 함수 → 50ms 딜레이 후 `User[]` 제공
+
+- **lib/profiler.ts**
+  - `logRender(name, extra)` 유틸 추가
+  - 개발 모드에서 렌더링 시각/컴포넌트명 출력
+
+- **types/user.ts**
+  - `User` 타입 정의 (`id`, `name`, `email`)
+
+- **features/users/**
+  - `UserList.tsx`: `useEffect`+`useState`로 `getUsers()` 호출 후 `UserCard[]` 렌더
+  - `UserCard.tsx`: `logRender` 호출 + `heavyWork(5ms)` 삽입 (병목 시뮬레이션)
+  - `UserCard`를 `memo()`로 감싸 중복 렌더 최소화
+  - 콘솔 로그로 렌더링 횟수 확인 가능
+
+- **app/users/page.tsx**
+  - `UserList` 임포트 후 `/users` 경로에서 렌더
+
+- **app/layout.tsx**
+  - 헤더 내 `/users` 네비게이션 링크 추가
