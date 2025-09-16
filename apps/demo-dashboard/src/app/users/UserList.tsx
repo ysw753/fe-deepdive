@@ -18,10 +18,14 @@ function UserListBase({ users, onDelete }: UserListProps) {
   }, []);
 
   return (
-    <div className="grid gap-3">
-      {users.map((u) => (
-        <UserCard key={u.id} user={u} onSelect={handleSelect} onDelete={onDelete} />
-      ))}
+    <div
+      style={{ height: 600, overflowY: 'auto' }} // 🔹 고정 높이 + 내부 스크롤
+    >
+      <div className="grid gap-3">
+        {users.map((u) => (
+          <UserCard key={u.id} user={u} onSelect={handleSelect} onDelete={onDelete} />
+        ))}
+      </div>
     </div>
   );
 }

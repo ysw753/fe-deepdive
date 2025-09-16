@@ -29,7 +29,7 @@ export async function signupRequest(values: SignupValues): Promise<ApiResult<{ u
 }
 // 🔹 유저 목록 조회 (더미 데이터 500명)
 export async function getUsers(): Promise<User[]> {
-  const users: User[] = Array.from({ length: 500 }, (_, i) => ({
+  const users: User[] = Array.from({ length: 10000 }, (_, i) => ({
     id: i + 1,
     name: `User ${i + 1}`,
     email: `user${i + 1}@example.com`,

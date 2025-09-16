@@ -3,7 +3,8 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { User } from '@/types/user';
 import { UserList } from './UserList';
 import { FormField } from '@/components/FormField'; // 🔹 Day6에서 만든 컴포넌트 import
-
+import { VirtualUserListWindow } from './VirtualUserListWindow';
+import { VirtualUserListVirtuoso } from './VirtualUserListVirtuoso';
 interface UsersClientProps {
   initialUsers: User[];
 }
@@ -14,6 +15,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState(query);
+  const [mode, setMode] = useState<'default' | 'window' | 'virtuoso'>('window');
 
   // 디바운스 적용
   useEffect(() => {
@@ -76,8 +78,34 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
         </button>
       </div>
 
+      {/* 모드 선택 */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setMode('default')}
+          className={`px-3 py-1 rounded ${mode === 'default' ? 'bg-gray-800 text-white' : 'bg-gray-200'}`}
+        >
+          Default
+        </button>
+        <button
+          onClick={() => setMode('window')}
+          className={`px-3 py-1 rounded ${mode === 'window' ? 'bg-gray-800 text-white' : 'bg-gray-200'}`}
+        >
+          react-window
+        </button>
+        <button
+          onClick={() => setMode('virtuoso')}
+          className={`px-3 py-1 rounded ${mode === 'virtuoso' ? 'bg-gray-800 text-white' : 'bg-gray-200'}`}
+        >
+          react-virtuoso
+        </button>
+      </div>
+
       {/* 유저 목록 */}
-      <UserList users={filteredUsers} onDelete={handleDelete} />
+      {mode === 'default' && <UserList users={filteredUsers} onDelete={handleDelete} />}
+      {mode === 'window' && <VirtualUserListWindow users={filteredUsers} onDelete={handleDelete} />}
+      {mode === 'virtuoso' && (
+        <VirtualUserListVirtuoso users={filteredUsers} onDelete={handleDelete} />
+      )}
     </div>
   );
 }

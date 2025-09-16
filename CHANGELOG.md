@@ -228,3 +228,36 @@ RHF 제네릭/Resolver 타입 불일치 해결, Vitest **hoisted mock**로 네�
 - 검색 시 입력할 때마다 500개 전부 필터링하지 않고, 디바운스로 부하 완화
 - 불필요한 렌더링 차단 → 500개 리스트에서 FPS 안정화
 - 접근성(a11y) 준수한 입력/버튼 제공 → 실무 환경과 유사하게 개선
+
+### Day 3: 가상화 (react-window / react-virtuoso)
+
+**요약**  
+`/users` 페이지에 가상화 스크롤을 도입하여 대량 데이터(최대 10k)에서도 FPS 저하 없이 부드럽게 동작.  
+`react-window`와 `react-virtuoso` 두 라이브러리로 비교 구현, Default 모드와 동일한 UI로 통일.
+
+#### 추가/변경
+
+- **features/users/VirtualUserListWindow.tsx**
+  - `FixedSizeList`(`react-window`)를 사용해 고정 높이 기반 가상화 구현
+  - `height`, `itemCount`, `itemSize` 지정 → 화면에 보이는 아이템만 DOM 유지
+  - 각 아이템 렌더링 시 `console.count`로 렌더링 횟수 확인 가능
+
+- **features/users/VirtualUserListVirtuoso.tsx**
+  - `Virtuoso`(`react-virtuoso`)를 사용해 가상화 구현
+  - 동적 높이 지원 가능, 기본은 고정 높이 리스트로 설정
+  - 스크롤 시 보이는 영역만 효율적으로 렌더링
+
+- **features/users/UsersClient.tsx**
+  - 모드 전환 버튼 추가 → `default` / `window` / `virtuoso` 3가지 모드 지원
+  - Default 모드도 스크롤 컨테이너 안에서 렌더링되도록 스타일 수정
+  - 유저 삭제(`handleDelete`) 및 추가(`handleAdd`) 로직은 공통으로 유지
+
+- **features/users/UserList.tsx**
+  - 기존 Default 리스트도 가상화 UI와 비슷하게 `overflow-y: auto` 컨테이너 적용
+  - 스크롤 환경 통일
+
+**체감 효과**
+
+- Default 모드: 스크롤 시 수천 개 아이템이 한꺼번에 렌더 → FPS 급격히 하락 (20~30fps)
+- Virtualized 모드: 스크롤해도 화면 내 10~20개만 렌더 → FPS 60 근처 유지
+- 데이터 10k행 이상에서도 스크롤 부드럽게 동작, 성능 개선 체감 확실
