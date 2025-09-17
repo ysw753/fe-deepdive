@@ -261,3 +261,29 @@ RHF 제네릭/Resolver 타입 불일치 해결, Vitest **hoisted mock**로 네�
 - Default 모드: 스크롤 시 수천 개 아이템이 한꺼번에 렌더 → FPS 급격히 하락 (20~30fps)
 - Virtualized 모드: 스크롤해도 화면 내 10~20개만 렌더 → FPS 60 근처 유지
 - 데이터 10k행 이상에서도 스크롤 부드럽게 동작, 성능 개선 체감 확실
+
+### Day 4: 가상화 상태에서 행 선택/컨텍스트 메뉴/셀 편집 유지 버그 픽스
+
+**요약**  
+가상화 모드(`react-window`, `react-virtuoso`)에서도 행 선택, 컨텍스트 메뉴, 셀 편집 동작이 정상적으로 유지되도록 버그 수정.  
+스크롤 시 메뉴가 잔상처럼 남는 문제와 편집 상태 초기화 문제를 해결해 UX를 개선함.
+
+#### 추가/변경
+
+- **features/users/UsersClient.tsx**
+  - 우클릭 시 해당 유저를 자동으로 선택 상태에 반영
+  - 스크롤 이벤트 발생 시 컨텍스트 메뉴 자동 닫힘 처리 추가
+
+- **features/users/ContextMenu.tsx**
+  - ESC 키, 외부 클릭 시 닫기 로직 유지
+  - 스크롤 시 자동 닫히도록 개선
+  - hover 시 border-radius가 잘리지 않도록 스타일 개선
+
+- **features/users/UserCard.tsx**
+  - 편집 모드 UX 통일 → Enter: 저장 / Esc: 취소 / blur: 자동 저장
+
+**체감 효과**
+
+- 컨텍스트 메뉴 hover 시 둥근 모서리가 정상적으로 보임
+- Default / Window / Virtuoso 모드에서 동일한 행 선택 및 편집 경험 제공
+- 스크롤 시 메뉴가 사라져 잔상 없는 깔끔한 UX 확보
