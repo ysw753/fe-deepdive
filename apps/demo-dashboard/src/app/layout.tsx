@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import './globals.css';
 import './reset.css';
+import { Providers } from './providers';
 export const metadata: Metadata = {
   title: 'Demo Dashboard',
   description: 'Reference app for api-safety-sdk',
@@ -41,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </nav>
         </header>
         <main id="main" tabIndex={-1} className="mx-auto max-w-4xl px-4 py-6">
-          {children}
+          <Providers>{children}</Providers>
         </main>
       </body>
     </html>

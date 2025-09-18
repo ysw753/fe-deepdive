@@ -287,3 +287,36 @@ RHF 제네릭/Resolver 타입 불일치 해결, Vitest **hoisted mock**로 네�
 - 컨텍스트 메뉴 hover 시 둥근 모서리가 정상적으로 보임
 - Default / Window / Virtuoso 모드에서 동일한 행 선택 및 편집 경험 제공
 - 스크롤 시 메뉴가 사라져 잔상 없는 깔끔한 UX 확보
+
+### Day 5: React Query 도입 + Suspense/에러 핸들링/Prefetching 적용
+
+**요약**  
+데이터 fetching을 React Query 기반으로 전환하고, Suspense와 ErrorBoundary를 적용해 로딩/에러 UI를 명확하게 구분.  
+Mutation과 Prefetching을 추가해 실제 서비스에 가까운 데이터 흐름을 구현하고 UX를 개선함.
+
+#### 추가/변경
+
+- **lib/api/users.ts**
+  - `getUsers`를 실제 API 호출(fetch) 기반으로 변경
+  - 1% 확률로 랜덤 에러 발생하도록 구현 → ErrorBoundary 테스트 가능
+  - `addUser`, `deleteUser` API 함수 추가 (실제 API 대체용 더미 구현)
+  - `prefetchUsers` 함수 작성 → SSR 시 데이터 미리 로드 가능
+
+- **features/users/UsersClient.tsx**
+  - 기존 로컬 상태 기반 추가/삭제 로직을 `useMutation` + React Query 캐시 업데이트 방식으로 교체
+  - `useSuspenseQuery` 적용해 데이터 로딩 시 `<Suspense fallback={<SkeletonUserList />}>`로 스켈레톤 표시
+  - `retry: false` 옵션으로 랜덤 에러 발생 시 즉시 `ErrorFallback` UI 노출
+
+- **features/users/ErrorFallback.tsx**
+  - 에러 발생 시 사용자에게 메시지 표시하는 컴포넌트 추가
+
+- **app/users/page.tsx**
+  - `ErrorBoundary`와 `Suspense`를 결합해 로딩/에러 핸들링을 페이지 단에서 처리
+  - `prefetchUsers` 적용 가능 구조 마련
+
+**체감 효과**
+
+- 로딩 중에는 Skeleton UI, 실패 시 에러 UI, 성공 시 리스트로 전환 → 사용자 경험 일관성 강화
+- 유저 추가/삭제 시 API 지연과 무관하게 캐시 업데이트로 빠른 UI 반영
+- 새로고침 시 Prefetching 효과로 스켈레톤 노출 최소화
+- 서비스 수준에 가까운 **데이터 로딩/에러/상호작용 경험** 확보

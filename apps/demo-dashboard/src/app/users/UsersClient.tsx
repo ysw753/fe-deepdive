@@ -6,19 +6,26 @@ import { FormField } from '@/components/FormField';
 import { VirtualUserListWindow } from './VirtualUserListWindow';
 import { VirtualUserListVirtuoso } from './VirtualUserListVirtuoso';
 import { ContextMenu } from './ContextMenu';
-
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { addUser, deleteUser, getUsers } from '@/lib/api/users';
 interface UsersClientProps {
-  initialUsers: User[];
+  initialUsers?: User[];
 }
-
 export function UsersClient({ initialUsers }: UsersClientProps) {
-  const [users, setUsers] = useState(initialUsers);
+  //const [users, setUsers] = useState(initialUsers);
+  const queryClient = useQueryClient();
+
   const [query, setQuery] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState(query);
-  const [mode, setMode] = useState<'default' | 'window' | 'virtuoso'>('window');
+  const [mode, setMode] = useState<'default' | 'window' | 'virtuoso'>('default');
 
+  const { data: users } = useSuspenseQuery<User[]>({
+    queryKey: ['users'],
+    queryFn: getUsers,
+    retry: false,
+  });
   // 선택 상태
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -43,20 +50,38 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
   const filteredUsers = useMemo(() => {
     return users.filter((u) => u.name.toLowerCase().includes(debouncedQuery.toLowerCase()));
   }, [users, debouncedQuery]);
+  // ➕ 유저 추가 (mutation 사용)
+  const addUserMutation = useMutation({
+    mutationFn: addUser,
+    onSuccess: (newUser) => {
+      queryClient.setQueryData<User[]>(['users'], (old) => (old ? [...old, newUser] : [newUser]));
+    },
+  });
 
-  // ➕ 유저 추가
   const handleAdd = useCallback(() => {
     if (!name || !email) return;
-    setUsers((prev) => [...prev, { id: Date.now(), name, email }]);
+    addUserMutation.mutate({ name, email });
     setName('');
     setEmail('');
-  }, [name, email]);
+  }, [name, email, addUserMutation]);
 
-  // ❌ 유저 삭제
-  const handleDelete = useCallback((id: number) => {
-    setUsers((prev) => prev.filter((u) => u.id !== id));
-    setContextMenu(null); // 삭제 후 메뉴 닫기
-  }, []);
+  // ❌ 유저 삭제 (mutation 사용)
+  const deleteUserMutation = useMutation({
+    mutationFn: deleteUser,
+    onSuccess: (_, userId) => {
+      queryClient.setQueryData<User[]>(['users'], (old) =>
+        old ? old.filter((u) => u.id !== userId) : []
+      );
+    },
+  });
+
+  const handleDelete = useCallback(
+    (id: number) => {
+      deleteUserMutation.mutate(id);
+      setContextMenu(null);
+    },
+    [deleteUserMutation]
+  );
 
   // 행 선택
   const handleSelect = useCallback((id: number) => {
@@ -87,19 +112,19 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
     setEditing({ id, value });
   }, []);
 
-  // 편집 종료
+  // 편집 종료 (실제로는 mutation 필요 → 지금은 로컬 캐시 갱신)
   const handleStopEdit = useCallback(
     (save?: boolean) => {
       if (editing) {
         if (save) {
-          setUsers((prev) =>
-            prev.map((u) => (u.id === editing.id ? { ...u, name: editing.value } : u))
+          queryClient.setQueryData<User[]>(['users'], (old) =>
+            old ? old.map((u) => (u.id === editing.id ? { ...u, name: editing.value } : u)) : []
           );
         }
         setEditing(null);
       }
     },
-    [editing]
+    [editing, queryClient]
   );
 
   // 🔹 스크롤/외부 클릭 시 메뉴 닫기
