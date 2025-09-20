@@ -320,3 +320,47 @@ Mutation과 Prefetching을 추가해 실제 서비스에 가까운 데이터 흐
 - 유저 추가/삭제 시 API 지연과 무관하게 캐시 업데이트로 빠른 UI 반영
 - 새로고침 시 Prefetching 효과로 스켈레톤 노출 최소화
 - 서비스 수준에 가까운 **데이터 로딩/에러/상호작용 경험** 확보
+
+### Day 6: 성능 계측 (LCP/TTI, 렌더 횟수, 스크롤 FPS 비교)
+
+**요약**  
+Default / React-Window / React-Virtuoso 각각의 렌더링 전략에 대해 성능 지표를 측정.  
+Web Vitals(FCP, LCP, TTFB, CLS), TTI(Time To Interactive), 렌더 횟수, 스크롤 FPS를 비교하여  
+실제 사용자 경험에서 어떤 차이가 발생하는지 수치로 검증함.
+
+#### 추가/변경
+
+- **lib/metrics.ts**
+  - `web-vitals` 기반 FCP, LCP, CLS, TTFB 로깅 함수 추가
+  - `initWebVitalsLogging` 작성 → 페이지 로드 시 지표 자동 수집
+
+- **lib/tti.ts**
+  - `tti-polyfill` 기반 TTI 측정 유틸 추가
+  - `[TTI] xxx ms` 로그로 Default / Window / Virtuoso 비교 가능
+
+- **lib/fpsMeter.ts**
+  - `requestAnimationFrame` 기반 FPS 측정 유틸 작성
+  - 스크롤 중 FPS 하락 여부 로그 기록
+
+- **lib/profiler.ts**
+  - `logRender` 유틸 추가 → `UserCard` 등 컴포넌트 렌더 횟수 추적
+
+- **components/PerfMonitor.tsx**
+  - 위 측정 유틸들을 통합해 lifecycle에서 실행
+  - UsersClient를 `<PerfMonitor>`로 감싸 성능 측정 적용
+
+#### 측정 결과 (요약)
+
+- **Default**
+  - LCP: 756ms / TTI: 518ms / FPS 안정적(141~145, 단일 구간 44)
+- **React-Window**
+  - LCP: 1140ms / TTI: 812ms / FPS 안정적(140대)
+- **React-Virtuoso**
+  - LCP: 540ms / TTI: 223ms / FPS 매우 안정적(282~290)
+
+#### 체감 효과
+
+- Default는 전체적으로 안정적이나 초기 렌더링이 상대적으로 늦음
+- React-Window는 Virtualization 구조로 메모리 효율적이지만 초기 로딩이 가장 느림
+- React-Virtuoso는 LCP/TTI/FPS 모두 뛰어나 실제 서비스 적용에 가장 유리
+- **전략별 성능 차이를 정량적으로 비교**해 서비스 특성에 맞는 선택 가능
